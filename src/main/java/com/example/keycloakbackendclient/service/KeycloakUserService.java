@@ -9,4 +9,8 @@ public interface KeycloakUserService {
     KeycloakUserDto registerUser(KeycloakUserDto keycloakUserDto);
 
     AccessTokenResponse generateAccessToken(UserCredentials credentials);
+
+    String getAuthorizedUsername();
+
+    KeycloakUserDto getCurrentUser();
 }
