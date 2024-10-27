@@ -78,6 +78,16 @@ public class KeycloakUserServiceImpl implements KeycloakUserService {
 
     }
 
+    @Override
+    public void updateUserRole(String keycloakId, String role) {
+        log.info("KeycloakUserService: updateUserRole - was called with keycloakId: {} and role: {}", keycloakId, role);
+        UsersResource usersResource = keycloakAdminClient.realm(realm).users();
+        UserResource userResource = usersResource.get(keycloakId);
+        userResource.roles().realmLevel().remove(userResource.roles().realmLevel().listAll());
+        RoleRepresentation realmRole = keycloakAdminClient.realm(realm).roles().get(role).toRepresentation();
+
+        userResource.roles().realmLevel().add(Collections.singletonList(realmRole));
+    }
 
     @Override
     public String getAuthorizedUsername() {

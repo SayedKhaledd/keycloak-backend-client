@@ -12,5 +12,7 @@ public interface KeycloakUserService {
 
     String getAuthorizedUsername();
 
+    void updateUserRole(String keycloakId, String role);
+
     KeycloakUserDto getCurrentUser();
 }
