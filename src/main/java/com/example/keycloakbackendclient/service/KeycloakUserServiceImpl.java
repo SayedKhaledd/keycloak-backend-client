@@ -9,9 +9,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -20,7 +22,9 @@ import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -45,23 +49,35 @@ public class KeycloakUserServiceImpl implements KeycloakUserService {
         log.info("KeycloakUserService: registerUser - was called with user: {}", keycloakUserDto.getUsername());
         UsersResource usersResource = keycloakAdminClient.realm(realm).users();
         UserRepresentation userRepresentation = keycloakUserTransformer.toUserRepresentation(keycloakUserDto);
-        CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
-        credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
-        credentialRepresentation.setValue(keycloakUserDto.getPassword());
-        credentialRepresentation.setTemporary(false);
-        userRepresentation.setCredentials(List.of(credentialRepresentation));
+
+        CredentialRepresentation credentials = new CredentialRepresentation();
+        credentials.setType(CredentialRepresentation.PASSWORD);
+        credentials.setValue(keycloakUserDto.getPassword());
+        credentials.setTemporary(false);
+
+        userRepresentation.setCredentials(Collections.singletonList(credentials));
+        userRepresentation.setEnabled(true);
+        userRepresentation.setEmailVerified(true);
 
         try (Response response = usersResource.create(userRepresentation)) {
             if (response.getStatus() != 201) {
-                throw new RuntimeException("Error creating user");
+                log.error("KeycloakUserService: registerUser - error: {}", response.getStatus());
+                throw new RuntimeException("Failed to create user, status: " + response.getStatus());
             }
-            return keycloakUserTransformer.toKeycloakUserDto((UserRepresentation) response.getEntity());
+            String userId = response.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
+            UserResource userResource = usersResource.get(userId);
+
+            addRealmRolesToUserResource(userResource, keycloakUserDto.getRoles());
+            addRealmRolesToUserRepresentation(userRepresentation, userResource.roles().realmLevel().listAll());
+
+            return keycloakUserTransformer.toKeycloakUserDto(userResource.toRepresentation());
         } catch (Exception e) {
             log.error("KeycloakUserService: registerUser - error: {}", e.getMessage());
-            throw new RuntimeException("Error creating user" + e);
+            throw new RuntimeException("Error creating user", e);
         }
 
     }
+
 
     @Override
     public String getAuthorizedUsername() {
@@ -109,4 +125,18 @@ public class KeycloakUserServiceImpl implements KeycloakUserService {
                 .build();
         return keycloak.tokenManager().getAccessToken();
     }
+
+    private void addRealmRolesToUserResource(UserResource userResource, List<String> roles) {
+        roles.forEach(role -> {
+            RoleRepresentation realmRole = keycloakAdminClient.realm(realm).roles().get(role).toRepresentation();
+            userResource.roles().realmLevel().add(Collections.singletonList(realmRole));
+        });
+    }
+
+    private void addRealmRolesToUserRepresentation(UserRepresentation userRepresentation, List<RoleRepresentation> realmRoles) {
+        userRepresentation.setRealmRoles(realmRoles.stream()
+                .map(RoleRepresentation::getName)
+                .collect(Collectors.toList()));
+    }
+
 }

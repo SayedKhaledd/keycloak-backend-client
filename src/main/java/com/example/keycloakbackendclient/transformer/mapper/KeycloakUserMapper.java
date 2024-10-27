@@ -16,6 +16,8 @@ public interface KeycloakUserMapper {
 
 
     @Mapping(target = "attributes", expression = "java(attributes(keycloakUserDto))")
+    @Mapping(target = "realmRoles", source = "roles")
+    @Mapping(target = "id", ignore = true)
     UserRepresentation toUserRepresentation(KeycloakUserDto keycloakUserDto);
 
     default Map<String, List<String>> attributes(KeycloakUserDto keycloakUserDto) {
@@ -23,12 +25,8 @@ public interface KeycloakUserMapper {
     }
 
     @Mapping(target = "keycloakId", source = "id")
-    @Mapping(target = "roles", expression = "java(roles(userRepresentation))")
+    @Mapping(target = "roles", source = "realmRoles")
+    @Mapping(target = "id", ignore = true)
     KeycloakUserDto toKeycloakUserDto(UserRepresentation userRepresentation);
 
-    default List<String> roles(UserRepresentation userRepresentation) {
-        return userRepresentation.getClientRoles().values().stream()
-                .flatMap(List::stream)
-                .toList();
-    }
 }
