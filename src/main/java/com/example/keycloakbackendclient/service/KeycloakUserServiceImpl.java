@@ -90,6 +90,23 @@ public class KeycloakUserServiceImpl implements KeycloakUserService {
     }
 
     @Override
+    public void updateKeycloakUser(KeycloakUserDto keycloakUserDto) {
+        log.info("KeycloakUserService: updateKeycloakUser - was called with user: {}", keycloakUserDto.getUsername());
+        UsersResource usersResource = keycloakAdminClient.realm(realm).users();
+        UserResource userResource = usersResource.get(keycloakUserDto.getKeycloakId());
+        UserRepresentation userRepresentation = keycloakUserTransformer.toUserRepresentation(keycloakUserDto);
+        userResource.update(userRepresentation);
+    }
+
+    @Override
+    public void deleteUser(String keycloakId) {
+        log.info("KeycloakUserService: deleteUser - was called with keycloakId: {}", keycloakId);
+        UsersResource usersResource = keycloakAdminClient.realm(realm).users();
+        UserResource userResource = usersResource.get(keycloakId);
+        userResource.remove();
+    }
+
+    @Override
     public String getAuthorizedUsername() {
         log.info("KeycloakUserService: getAuthorizedUsername - was called");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
