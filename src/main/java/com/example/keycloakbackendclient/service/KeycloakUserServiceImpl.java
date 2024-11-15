@@ -126,13 +126,7 @@ public class KeycloakUserServiceImpl implements KeycloakUserService {
         if (authentication == null) {
             return null;
         } else if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
-            return KeycloakUserDto.builder()
-                    .keycloakId(jwtAuthenticationToken.getToken().getClaim("sub"))
-                    .username(jwtAuthenticationToken.getToken().getClaim(StandardClaimNames.PREFERRED_USERNAME))
-                    .email(jwtAuthenticationToken.getToken().getClaim(StandardClaimNames.EMAIL))
-                    .firstName(jwtAuthenticationToken.getToken().getClaim(StandardClaimNames.GIVEN_NAME))
-                    .lastName(jwtAuthenticationToken.getToken().getClaim(StandardClaimNames.FAMILY_NAME))
-                    .build();
+            return keycloakUserTransformer.toKeycloakUserDto(jwtAuthenticationToken);
         } else
             return null;
     }
